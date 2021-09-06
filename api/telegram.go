@@ -12,6 +12,7 @@ import (
 )
 
 var bot *tb.Bot
+var rm *tb.ReplyMarkup
 
 func setupBot() error {
 	settings := tb.Settings{
@@ -25,14 +26,22 @@ func setupBot() error {
 		fmt.Println(err)
 		return err
 	}
-	bot.Handle(tb.OnText, handleText)
+
+	rm = &tb.ReplyMarkup{ResizeReplyKeyboard: true}
+	// Reply buttons:
+	btnLocation := rm.Location("Near me")
+	rm.Reply(rm.Row(btnLocation))
+
+	bot.Handle(&btnLocation, handleLocation)
 	bot.Handle(tb.OnLocation, handleLocation)
+	bot.Handle(tb.OnText, handleText)
+
 	return nil
 }
 
 func handleText(m *tb.Message) {
 	responseText := "I'm serverless now but still WIP"
-	bot.Send(m.Sender, responseText)
+	bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
 }
 
 func handleLocation(m *tb.Message) {
@@ -54,7 +63,7 @@ func handleLocation(m *tb.Message) {
 		responseText = fmt.Sprintf("Something bad happened: %s\n\n", err)
 	}
 
-	bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown})
+	bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
 }
 
 func parseRequest(r *http.Request) (*tb.Update, error) {
