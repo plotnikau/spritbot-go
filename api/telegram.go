@@ -54,7 +54,7 @@ func handleLocation(m *tb.Message) {
 
 func handleHome(m *tb.Message) {
 	settings := loadSettings(m.Chat.ID)
-	processCoordinates(m, settings.homeLat, settings.homeLng)
+	processCoordinates(m, settings.Lat, settings.Lng)
 }
 
 func processCoordinates(m *tb.Message, lat float64, lng float64) {
@@ -80,8 +80,8 @@ func processCoordinates(m *tb.Message, lat float64, lng float64) {
 func persistLoc(id int64, loc *tb.Location) {
 	settings := loadSettings(id)
 
-	settings.homeLat = float64(loc.Lat)
-	settings.homeLng = float64(loc.Lng)
+	settings.Lat = float64(loc.Lat)
+	settings.Lng = float64(loc.Lng)
 
 	saveSettings(id, settings)
 }

@@ -13,11 +13,11 @@ var rdb *redis.Client
 var ctx = context.Background()
 
 type Settings struct {
-	homeLat     float64
-	homeLng     float64
-	trackDiesel bool
-	trackSuper  bool
-	trackE10    bool
+	Lat         float64 `json:"lat"`
+	Lng         float64 `json:"lng"`
+	TrackDiesel bool    `json:"diesel"`
+	TrackSuper  bool    `json:"super"`
+	TrackE10    bool    `json:"e10"`
 }
 
 func setupPersistency() {
