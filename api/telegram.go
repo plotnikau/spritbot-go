@@ -30,9 +30,11 @@ func setupBot() error {
 	rm = &tb.ReplyMarkup{ResizeReplyKeyboard: true}
 	// Reply buttons:
 	btnLocation := rm.Location("Near me")
-	rm.Reply(rm.Row(btnLocation))
+	btnHome := rm.Text("Home")
+	rm.Reply(rm.Row(btnLocation), rm.Row(btnHome))
 
 	bot.Handle(&btnLocation, handleLocation)
+	bot.Handle(&btnHome, handleHome)
 	bot.Handle(tb.OnLocation, handleLocation)
 	bot.Handle(tb.OnText, handleText)
 
@@ -46,10 +48,19 @@ func handleText(m *tb.Message) {
 
 func handleLocation(m *tb.Message) {
 	loc := m.Location
+	processCoordinates(m, float64(loc.Lat), float64(loc.Lng))
+	persistLoc(m.Chat.ID, loc)
+}
 
+func handleHome(m *tb.Message) {
+	settings := loadSettings(m.Chat.ID)
+	processCoordinates(m, settings.homeLat, settings.homeLng)
+}
+
+func processCoordinates(m *tb.Message, lat float64, lng float64) {
 	tkApiKey := os.Getenv("TK_API_KEY")
 	tk := tkapi.NewClient(tkApiKey, nil)
-	stations, _, err := tk.Station.List(float64(loc.Lat), float64(loc.Lng), 5)
+	stations, _, err := tk.Station.List(lat, lng, 5)
 
 	responseText := ""
 	if err == nil {
@@ -64,6 +75,15 @@ func handleLocation(m *tb.Message) {
 	}
 
 	bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
+}
+
+func persistLoc(id int64, loc *tb.Location) {
+	settings := loadSettings(id)
+
+	settings.homeLat = float64(loc.Lat)
+	settings.homeLng = float64(loc.Lng)
+
+	saveSettings(id, settings)
 }
 
 func parseRequest(r *http.Request) (*tb.Update, error) {
@@ -87,6 +107,7 @@ func TelegramHandler(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		err = setupBot()
 		if err == nil {
+			setupPersistency()
 			bot.ProcessUpdate(*u)
 		}
 	}
