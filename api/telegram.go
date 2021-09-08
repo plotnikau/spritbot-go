@@ -14,6 +14,12 @@ import (
 var bot *tb.Bot
 var rm *tb.ReplyMarkup
 
+const (
+	CMD_SETHOME      = "/sethome"
+	CMD_TRACKING_ON  = "/tracking_on"
+	CMD_TRACKING_OFF = "/tracking_off"
+)
+
 func setupBot() error {
 	settings := tb.Settings{
 		Token:       os.Getenv("TELEGRAM_BOT_TOKEN"),
@@ -38,6 +44,9 @@ func setupBot() error {
 	bot.Handle(tb.OnLocation, handleLocation)
 	bot.Handle(tb.OnText, handleText)
 
+	// commands
+	bot.Handle(CMD_SETHOME, handleSetHome)
+
 	return nil
 }
 
@@ -49,12 +58,29 @@ func handleText(m *tb.Message) {
 func handleLocation(m *tb.Message) {
 	loc := m.Location
 	processCoordinates(m, float64(loc.Lat), float64(loc.Lng))
-	persistLoc(m.Chat.ID, loc)
+	if persistLoc(m.Chat.ID, loc) == true {
+		responseText := "Location stored as *Home*"
+		bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
+	}
 }
 
 func handleHome(m *tb.Message) {
 	settings := loadSettings(m.Chat.ID)
-	processCoordinates(m, settings.Lat, settings.Lng)
+	if settings.Lat != 0.0 {
+		processCoordinates(m, settings.Lat, settings.Lng)
+	} else {
+		responseText := "Use /setHome command first"
+		bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
+	}
+}
+
+func handleSetHome(m *tb.Message) {
+	id := m.Chat.ID
+	settings := loadSettings(id)
+	settings.SetHome = true
+	saveSettings(id, settings)
+	responseText := "Send me a location and i will set it as your *Home* location"
+	bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
 }
 
 func processCoordinates(m *tb.Message, lat float64, lng float64) {
@@ -77,13 +103,17 @@ func processCoordinates(m *tb.Message, lat float64, lng float64) {
 	bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
 }
 
-func persistLoc(id int64, loc *tb.Location) {
+func persistLoc(id int64, loc *tb.Location) bool {
 	settings := loadSettings(id)
 
-	settings.Lat = float64(loc.Lat)
-	settings.Lng = float64(loc.Lng)
-
-	saveSettings(id, settings)
+	if settings.SetHome == true {
+		settings.Lat = float64(loc.Lat)
+		settings.Lng = float64(loc.Lng)
+		settings.SetHome = false
+		saveSettings(id, settings)
+		return true
+	}
+	return false
 }
 
 func parseRequest(r *http.Request) (*tb.Update, error) {

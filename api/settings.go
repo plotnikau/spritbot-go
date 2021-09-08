@@ -18,6 +18,7 @@ type Settings struct {
 	TrackDiesel bool    `json:"diesel"`
 	TrackSuper  bool    `json:"super"`
 	TrackE10    bool    `json:"e10"`
+	SetHome     bool    `json:"setHome"`
 }
 
 func setupPersistency() {
