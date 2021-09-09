@@ -13,11 +13,17 @@ import (
 
 var bot *tb.Bot
 var rm *tb.ReplyMarkup
+var fts *tb.ReplyMarkup
 
 const (
-	CMD_SETHOME      = "/sethome"
-	CMD_TRACKING_ON  = "/tracking_on"
-	CMD_TRACKING_OFF = "/tracking_off"
+	CMD_SETHOME  = "/sethome"
+	CMD_FUELTYPE = "/fueltype"
+)
+
+const (
+	DIESEL = "diesel"
+	SUPER  = "super"
+	E10    = "e10"
 )
 
 func setupBot() error {
@@ -33,6 +39,20 @@ func setupBot() error {
 		return err
 	}
 
+	setupStandardReplyKeys()
+	setupFueltypeSelectionKeys()
+
+	bot.Handle(tb.OnLocation, handleLocation)
+	bot.Handle(tb.OnText, handleText)
+
+	// commands
+	bot.Handle(CMD_SETHOME, handleSetHome)
+	bot.Handle(CMD_FUELTYPE, handleFueltype)
+
+	return nil
+}
+
+func setupStandardReplyKeys() {
 	rm = &tb.ReplyMarkup{ResizeReplyKeyboard: true}
 	// Reply buttons:
 	btnLocation := rm.Location("Near me")
@@ -41,13 +61,55 @@ func setupBot() error {
 
 	bot.Handle(&btnLocation, handleLocation)
 	bot.Handle(&btnHome, handleHome)
-	bot.Handle(tb.OnLocation, handleLocation)
-	bot.Handle(tb.OnText, handleText)
+}
 
-	// commands
-	bot.Handle(CMD_SETHOME, handleSetHome)
+func setupFueltypeSelectionKeys() {
+	fts = &tb.ReplyMarkup{}
+	btnDiesel := fts.Data("diesel", "diesel")
+	btnSuper := fts.Data("super", "super")
+	btnE10 := fts.Data("e10", "e10")
+	fts.Inline(
+		fts.Row(btnDiesel, btnSuper, btnE10),
+	)
 
-	return nil
+	bot.Handle(&btnDiesel, func(c *tb.Callback) {
+		handleFueltypeChange(c, DIESEL)
+	})
+
+	bot.Handle(&btnSuper, func(c *tb.Callback) {
+		handleFueltypeChange(c, SUPER)
+	})
+
+	bot.Handle(&btnE10, func(c *tb.Callback) {
+		handleFueltypeChange(c, E10)
+	})
+}
+
+func handleFueltypeChange(c *tb.Callback, ft string) {
+	id := c.Message.Chat.ID
+	settings := loadSettings(id)
+	switch ft {
+	case DIESEL:
+		settings.TrackDiesel = !settings.TrackDiesel
+	case SUPER:
+		settings.TrackSuper = !settings.TrackSuper
+	case E10:
+		settings.TrackE10 = !settings.TrackE10
+	}
+	saveSettings(id, settings)
+	text := fmt.Sprintf("diesel: %s  |  super: %s  |  e10: %s",
+		getIndicator(settings.TrackDiesel), getIndicator(settings.TrackSuper), getIndicator(settings.TrackE10))
+
+	bot.Edit(c.Message, text, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: fts})
+	bot.Respond(c, &tb.CallbackResponse{Text: text})
+}
+
+func getIndicator(value bool) string {
+	if value == true {
+		return "✅"
+	} else {
+		return "❌"
+	}
 }
 
 func handleText(m *tb.Message) {
@@ -81,6 +143,16 @@ func handleSetHome(m *tb.Message) {
 	saveSettings(id, settings)
 	responseText := "Send me a location and i will set it as your *Home* location"
 	bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
+}
+
+func handleFueltype(m *tb.Message) {
+	id := m.Chat.ID
+	settings := loadSettings(id)
+	text := "select your fueltype\n"
+	text += fmt.Sprintf("diesel: %s  |  super: %s  |  e10: %s",
+		getIndicator(settings.TrackDiesel), getIndicator(settings.TrackSuper), getIndicator(settings.TrackE10))
+
+	bot.Send(m.Sender, text, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: fts})
 }
 
 func processCoordinates(m *tb.Message, lat float64, lng float64) {
@@ -133,11 +205,11 @@ func parseRequest(r *http.Request) (*tb.Update, error) {
 }
 
 func TelegramHandler(w http.ResponseWriter, r *http.Request) {
+	setupPersistency()
 	u, err := parseRequest(r)
 	if err == nil {
 		err = setupBot()
 		if err == nil {
-			setupPersistency()
 			bot.ProcessUpdate(*u)
 		}
 	}
