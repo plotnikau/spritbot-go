@@ -114,10 +114,19 @@ func handleText(m *tb.Message) {
 
 func handleLocation(m *tb.Message) {
 	loc := m.Location
-	processCoordinates(m, float64(loc.Lat), float64(loc.Lng))
+	lat := float64(loc.Lat)
+	lng := float64(loc.Lng)
 	if persistLoc(m.Chat.ID, loc) == true {
-		responseText := "Location stored as *Home*"
-		_, _ = bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
+		stations, err := getStations(lat, lng)
+		if err != nil || len(stations) == 0 {
+			responseText := "No stations found for location"
+			_, _ = bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
+		} else {
+			responseText := "Location stored as *Home*"
+			_, _ = bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
+		}
+	} else {
+		processCoordinates(m, lat, lng)
 	}
 }
 
@@ -149,9 +158,8 @@ func handleFueltype(m *tb.Message) {
 }
 
 func processCoordinates(m *tb.Message, lat float64, lng float64) {
-	tkApiKey := os.Getenv("TK_API_KEY")
-	tk := tkapi.NewClient(tkApiKey, nil)
-	stations, _, err := tk.Station.List(lat, lng, 5)
+
+	stations, err := getStations(lat, lng)
 
 	loadSettings(m.Chat.ID)
 	responseText := ""
@@ -173,6 +181,13 @@ func processCoordinates(m *tb.Message, lat float64, lng float64) {
 	}
 
 	_, _ = bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
+}
+
+func getStations(lat float64, lng float64) ([]tkapi.Station, error) {
+	tkApiKey := os.Getenv("TK_API_KEY")
+	tk := tkapi.NewClient(tkApiKey, nil)
+	stations, _, err := tk.Station.List(lat, lng, 5)
+	return stations, err
 }
 
 func persistLoc(id int64, loc *tb.Location) bool {
