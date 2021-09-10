@@ -40,6 +40,15 @@ func loadSettings(id int64) {
 		if err == nil {
 			_ = json.Unmarshal([]byte(val), &s)
 			settings = &s
+		} else {
+			settings = &Settings{
+				Lat:         0,
+				Lng:         0,
+				TrackDiesel: true,
+				TrackSuper:  true,
+				TrackE10:    true,
+				SetHome:     false,
+			}
 		}
 	}
 }
