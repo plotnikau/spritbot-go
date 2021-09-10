@@ -11,6 +11,7 @@ import (
 
 var rdb *redis.Client
 var ctx = context.Background()
+var settings *Settings = nil
 
 type Settings struct {
 	Lat         float64 `json:"lat"`
@@ -27,21 +28,23 @@ func setupPersistency() {
 	rdb = redis.NewClient(opt)
 }
 
-func saveSettings(id int64, settings *Settings) {
+func saveSettings(id int64) {
 	js, _ := json.Marshal(settings)
 	rdb.Set(ctx, string(id), js, 0)
 }
 
-func loadSettings(id int64) *Settings {
-	var settings Settings
-	val, err := rdb.Get(ctx, string(id)).Result()
-	if err == nil {
-		json.Unmarshal([]byte(val), &settings)
+func loadSettings(id int64) {
+	var s Settings
+	if settings == nil {
+		val, err := rdb.Get(ctx, string(id)).Result()
+		if err == nil {
+			_ = json.Unmarshal([]byte(val), &s)
+			settings = &s
+		}
 	}
-	return &settings
 }
 
 func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "ok")
+	_, _ = fmt.Fprintf(w, "ok")
 }
