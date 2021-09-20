@@ -119,7 +119,7 @@ func getIndicator(value bool) string {
 }
 
 func handleText(m *tb.Message) {
-	responseText := "I'm serverless now but still WIP"
+	responseText := "Send me a location"
 	_, _ = bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
 }
 
