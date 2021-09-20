@@ -7,6 +7,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 var rdb *redis.Client
@@ -30,13 +31,13 @@ func setupPersistency() {
 
 func saveSettings(id int64) {
 	js, _ := json.Marshal(settings)
-	rdb.Set(ctx, string(id), js, 0)
+	rdb.Set(ctx, strconv.FormatInt(id, 10), js, 0)
 }
 
 func loadSettings(id int64) {
 	var s Settings
 	if settings == nil {
-		val, err := rdb.Get(ctx, string(id)).Result()
+		val, err := rdb.Get(ctx, strconv.FormatInt(id, 10)).Result()
 		if err == nil {
 			_ = json.Unmarshal([]byte(val), &s)
 			settings = &s
