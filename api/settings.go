@@ -30,14 +30,16 @@ func setupPersistency() {
 }
 
 func saveSettings(id int64) {
+	key := os.Getenv("VERCEL_ENV") + "/" + strconv.FormatInt(id, 10)
 	js, _ := json.Marshal(settings)
-	rdb.Set(ctx, strconv.FormatInt(id, 10), js, 0)
+	rdb.Set(ctx, key, js, 0)
 }
 
 func loadSettings(id int64) {
 	var s Settings
 	if settings == nil {
-		val, err := rdb.Get(ctx, strconv.FormatInt(id, 10)).Result()
+		key := os.Getenv("VERCEL_ENV") + "/" + strconv.FormatInt(id, 10)
+		val, err := rdb.Get(ctx, key).Result()
 		if err == nil {
 			_ = json.Unmarshal([]byte(val), &s)
 			settings = &s

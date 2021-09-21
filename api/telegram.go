@@ -25,9 +25,19 @@ const (
 	E10    = "e10"
 )
 
+const (
+	PROD_TOKEN = "TELEGRAM_BOT_TOKEN"
+	DEV_TOKEN  = "TELEGRAM_BOT_TOKEN_DEV"
+)
+
 func setupBot(id int64) error {
+	env := os.Getenv("VERCEL_ENV")
+	key := DEV_TOKEN
+	if env == "production" {
+		key = PROD_TOKEN
+	}
 	botSettings := tb.Settings{
-		Token:       os.Getenv("TELEGRAM_BOT_TOKEN"),
+		Token:       os.Getenv(key),
 		Synchronous: true,
 		Verbose:     true,
 	}
@@ -146,7 +156,7 @@ func handleHome(m *tb.Message) {
 	if settings.Lat != 0.0 {
 		processCoordinates(m, settings.Lat, settings.Lng)
 	} else {
-		responseText := "Use /setHome command first"
+		responseText := "Use /sethome command first"
 		_, _ = bot.Send(m.Sender, responseText, &tb.SendOptions{ParseMode: tb.ModeMarkdown, ReplyMarkup: rm})
 	}
 }
