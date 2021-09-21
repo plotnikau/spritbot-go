@@ -37,21 +37,19 @@ func saveSettings(id int64) {
 
 func loadSettings(id int64) {
 	var s Settings
-	if settings == nil {
-		key := os.Getenv("VERCEL_ENV") + "/" + strconv.FormatInt(id, 10)
-		val, err := rdb.Get(ctx, key).Result()
-		if err == nil {
-			_ = json.Unmarshal([]byte(val), &s)
-			settings = &s
-		} else {
-			settings = &Settings{
-				Lat:         0,
-				Lng:         0,
-				TrackDiesel: true,
-				TrackSuper:  true,
-				TrackE10:    true,
-				SetHome:     false,
-			}
+	key := os.Getenv("VERCEL_ENV") + "/" + strconv.FormatInt(id, 10)
+	val, err := rdb.Get(ctx, key).Result()
+	if err == nil {
+		_ = json.Unmarshal([]byte(val), &s)
+		settings = &s
+	} else {
+		settings = &Settings{
+			Lat:         0,
+			Lng:         0,
+			TrackDiesel: true,
+			TrackSuper:  true,
+			TrackE10:    true,
+			SetHome:     false,
 		}
 	}
 }
